@@ -18,14 +18,14 @@ namespace AudioPlayer.Services
             _logger = logger;
         }
 
-        public async Task PlayAsync(IEnumerable<string> paths)
+        public async Task PlayAsync(IEnumerable<string> paths, CancellationToken cancellationToken)
         {
-            await Task.Run(() => PlayInternal(EnumerateFiles(paths)));
+            await Task.Run(() => PlayInternal(EnumerateFiles(paths), cancellationToken));
         }
 
         public void Play(IEnumerable<string> paths)
         {
-            PlayInternal(EnumerateFiles(paths));
+            PlayInternal(EnumerateFiles(paths), CancellationToken.None);
         }
 
         private IEnumerable<string> EnumerateFiles(IEnumerable<string> paths) =>
@@ -33,7 +33,7 @@ namespace AudioPlayer.Services
                 : Directory.Exists(p) ? Directory.EnumerateFiles(p, "*", SearchOption.AllDirectories)
                 : throw new FileNotFoundException(p));
 
-        private void PlayInternal(IEnumerable<string> files)
+        private void PlayInternal(IEnumerable<string> files, CancellationToken cancellationToken)
         {
             var lockObject = new object();
 
@@ -45,6 +45,7 @@ namespace AudioPlayer.Services
 
                     using var reader = new AudioFileReader(file);
                     using var output = new WasapiOut();
+                    using var registration = cancellationToken.Register(output.Stop);
 
                     lock (lockObject)
                     {
