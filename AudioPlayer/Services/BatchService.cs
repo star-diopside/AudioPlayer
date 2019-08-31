@@ -10,6 +10,8 @@ namespace AudioPlayer.Services
         private readonly IAudioService _audioService;
         private readonly string[] _args;
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
+        private readonly object _lockObject = new object();
+        private bool _stopped;
 
         public BatchService(IApplicationLifetime applicationLifetime, IAudioService audioService, string[] args)
         {
@@ -22,16 +24,35 @@ namespace AudioPlayer.Services
         {
             _applicationLifetime.ApplicationStarted.Register(async () =>
             {
+                _stopped = false;
+
                 await _audioService.PlayAsync(_args, _cts.Token);
+
+                lock (_lockObject)
+                {
+                    _stopped = true;
+                    Monitor.PulseAll(_lockObject);
+                }
+
                 _applicationLifetime.StopApplication();
             });
+
             return Task.CompletedTask;
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
         {
-            _cts.Cancel();
-            return Task.CompletedTask;
+            return Task.Run(() =>
+            {
+                lock (_lockObject)
+                {
+                    if (!_stopped)
+                    {
+                        _cts.Cancel();
+                        Monitor.Wait(_lockObject);
+                    }
+                }
+            });
         }
     }
 }
