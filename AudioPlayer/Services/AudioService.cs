@@ -44,9 +44,15 @@ namespace AudioPlayer.Services
                     break;
                 }
 
+                var fileInfo = new
+                {
+                    FileName = Path.GetFileName(file),
+                    DirectoryName = Path.GetDirectoryName(Path.GetFullPath(file))
+                };
+
                 try
                 {
-                    _logger.LogInformation("Start: {file}", file);
+                    _logger.LogInformation("Start: {@File}", fileInfo);
 
                     using var reader = new AudioFileReader(file);
                     using var output = new WasapiOut();
@@ -72,7 +78,7 @@ namespace AudioPlayer.Services
                 }
                 finally
                 {
-                    _logger.LogInformation("End: {file}", file);
+                    _logger.LogInformation("End: {@File}", fileInfo);
                 }
             }
         }
