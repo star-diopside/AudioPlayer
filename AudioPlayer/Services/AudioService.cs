@@ -56,10 +56,15 @@ namespace AudioPlayer.Services
 
                     using var reader = new AudioFileReader(file);
                     using var output = new WasapiOut();
-                    using var registration = cancellationToken.Register(output.Stop);
 
                     lock (lockObject)
                     {
+                        using var registration = cancellationToken.Register(() =>
+                        {
+                            lock (lockObject) { }
+                            output.Stop();
+                        });
+
                         output.Init(reader);
                         output.PlaybackStopped += (s, e) =>
                         {
