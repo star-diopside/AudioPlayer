@@ -61,7 +61,10 @@ namespace AudioPlayer.Services
                     {
                         using var registration = cancellationToken.Register(() =>
                         {
-                            lock (lockObject) { }
+                            lock (lockObject)
+                            {
+                                _logger.LogInformation("Canceled.");
+                            }
                             output.Stop();
                         });
 
