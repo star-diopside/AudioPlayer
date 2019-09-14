@@ -29,8 +29,10 @@ namespace AudioPlayer.Services
         }
 
         private IEnumerable<string> EnumerateFiles(IEnumerable<string> paths) =>
-            paths.SelectMany(p => File.Exists(p) ? new[] { p }
+            paths.SelectMany(p => File.Exists(p) ? new[] { p }.AsEnumerable()
                 : Directory.Exists(p) ? Directory.EnumerateFiles(p, "*", SearchOption.AllDirectories)
+                                                 .OrderBy(file => Path.GetDirectoryName(Path.GetFullPath(file)))
+                                                 .ThenBy(file => Path.GetFileName(file))
                 : throw new FileNotFoundException(p));
 
         private void PlayInternal(IEnumerable<string> paths, CancellationToken cancellationToken)
