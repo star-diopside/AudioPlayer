@@ -77,6 +77,22 @@ namespace AudioPlayer.Services
                             }
                         };
                         output.Play();
+
+                        using (var tfile = TagLib.File.Create(file))
+                        {
+                            _logger.LogInformation("Tag: {@Tag}", new
+                            {
+                                tfile.Tag.Track,
+                                tfile.Tag.TrackCount,
+                                tfile.Tag.Title,
+                                tfile.Tag.Performers,
+                                tfile.Tag.Disc,
+                                tfile.Tag.DiscCount,
+                                tfile.Tag.Album,
+                                tfile.Tag.AlbumArtists
+                            });
+                        }
+
                         Monitor.Wait(lockObject);
                     }
                 }
