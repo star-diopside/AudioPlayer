@@ -10,21 +10,26 @@ namespace AudioPlayer
     {
         static async Task Main(string[] args)
         {
-            await new HostBuilder()
-                .ConfigureLogging(logging =>
-                {
-                    Log.Logger = new LoggerConfiguration()
-                        .WriteTo.Console()
-                        .CreateLogger();
-                    logging.AddSerilog();
-                })
-                .ConfigureServices(services =>
-                {
-                    services.AddHostedService<BatchService>();
-                    services.AddSingleton<string[]>(args);
-                    services.AddSingleton<IAudioService, AudioService>();
-                })
-                .RunConsoleAsync();
+            Log.Logger = new LoggerConfiguration()
+                .WriteTo.Console()
+                .CreateLogger();
+
+            try
+            {
+                await new HostBuilder()
+                    .ConfigureServices(services =>
+                    {
+                        services.AddHostedService<BatchService>();
+                        services.AddSingleton<string[]>(args);
+                        services.AddSingleton<IAudioService, AudioService>();
+                    })
+                    .UseSerilog()
+                    .RunConsoleAsync();
+            }
+            finally
+            {
+                Log.CloseAndFlush();
+            }
         }
     }
 }
