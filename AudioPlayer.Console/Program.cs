@@ -1,10 +1,11 @@
-﻿using AudioPlayer.Services;
+﻿using AudioPlayer.Console.Services;
+using AudioPlayer.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using System.Threading.Tasks;
 
-namespace AudioPlayer
+namespace AudioPlayer.Console
 {
     class Program
     {

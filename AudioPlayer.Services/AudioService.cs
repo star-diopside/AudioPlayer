@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace AudioPlayer.Services
 {
-    class AudioService : IAudioService
+    public class AudioService : IAudioService
     {
         private readonly ILogger<AudioService> _logger;
 

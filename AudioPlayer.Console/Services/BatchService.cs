@@ -1,8 +1,9 @@
-﻿using Microsoft.Extensions.Hosting;
+﻿using AudioPlayer.Services;
+using Microsoft.Extensions.Hosting;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace AudioPlayer.Services
+namespace AudioPlayer.Console.Services
 {
     class BatchService : IHostedService
     {

@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace AudioPlayer.Services
 {
-    interface IAudioService
+    public interface IAudioService
     {
         Task PlayAsync(IEnumerable<string> paths, CancellationToken cancellationToken);
 
