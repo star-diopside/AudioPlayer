@@ -28,7 +28,7 @@ namespace AudioPlayer.Services
             PlayInternal(paths, CancellationToken.None);
         }
 
-        private IEnumerable<string> EnumerateFiles(IEnumerable<string> paths) =>
+        private static IEnumerable<string> EnumerateFiles(IEnumerable<string> paths) =>
             paths.SelectMany(p => File.Exists(p) ? new[] { p }.AsEnumerable()
                 : Directory.Exists(p) ? Directory.EnumerateFiles(p, "*", SearchOption.AllDirectories)
                                                  .OrderBy(file => Path.GetDirectoryName(Path.GetFullPath(file)))

@@ -25,17 +25,22 @@ namespace AudioPlayer.Console.Services
         {
             _applicationLifetime.ApplicationStarted.Register(async () =>
             {
-                _stopped = false;
-
-                await _audioService.PlayAsync(_args, _cts.Token);
-
-                lock (_lockObject)
+                try
                 {
-                    _stopped = true;
-                    Monitor.PulseAll(_lockObject);
-                }
+                    _stopped = false;
 
-                _applicationLifetime.StopApplication();
+                    await _audioService.PlayAsync(_args, _cts.Token);
+
+                    lock (_lockObject)
+                    {
+                        _stopped = true;
+                        Monitor.PulseAll(_lockObject);
+                    }
+                }
+                finally
+                {
+                    _applicationLifetime.StopApplication();
+                }
             });
 
             return Task.CompletedTask;
