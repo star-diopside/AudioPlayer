@@ -33,7 +33,7 @@ namespace AudioPlayer.Services
                 : Directory.Exists(p) ? Directory.EnumerateFiles(p, "*", SearchOption.AllDirectories)
                                                  .OrderBy(file => Path.GetDirectoryName(Path.GetFullPath(file)))
                                                  .ThenBy(file => Path.GetFileName(file))
-                : throw new FileNotFoundException(p));
+                : throw new FileNotFoundException("File Not Found: " + p));
 
         private void PlayInternal(IEnumerable<string> paths, CancellationToken cancellationToken)
         {
