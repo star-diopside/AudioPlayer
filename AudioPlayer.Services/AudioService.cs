@@ -37,8 +37,6 @@ namespace AudioPlayer.Services
 
         private void PlayInternal(IEnumerable<string> paths, CancellationToken cancellationToken)
         {
-            var lockObject = new object();
-
             foreach (var file in EnumerateFiles(paths))
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -46,66 +44,73 @@ namespace AudioPlayer.Services
                     break;
                 }
 
-                var fileInfo = new
+                PlayInternal(file, cancellationToken);
+            }
+        }
+
+        private void PlayInternal(string file, CancellationToken cancellationToken)
+        {
+            var fileInfo = new
+            {
+                FileName = Path.GetFileName(file),
+                DirectoryName = Path.GetDirectoryName(Path.GetFullPath(file))
+            };
+
+            try
+            {
+                _logger.LogInformation("Start: {@File}", fileInfo);
+
+                using var reader = new AudioFileReader(file);
+                using var output = new WasapiOut();
+
+                var lockObject = new object();
+
+                lock (lockObject)
                 {
-                    FileName = Path.GetFileName(file),
-                    DirectoryName = Path.GetDirectoryName(Path.GetFullPath(file))
-                };
-
-                try
-                {
-                    _logger.LogInformation("Start: {@File}", fileInfo);
-
-                    using var reader = new AudioFileReader(file);
-                    using var output = new WasapiOut();
-
-                    lock (lockObject)
+                    using var registration = cancellationToken.Register(() =>
                     {
-                        using var registration = cancellationToken.Register(() =>
+                        lock (lockObject)
                         {
-                            lock (lockObject)
-                            {
-                                _logger.LogInformation("Canceled.");
-                            }
-                            output.Stop();
-                        });
-
-                        output.Init(reader);
-                        output.PlaybackStopped += (s, e) =>
-                        {
-                            lock (lockObject)
-                            {
-                                Monitor.PulseAll(lockObject);
-                            }
-                        };
-                        output.Play();
-
-                        using (var tfile = TagLib.File.Create(file))
-                        {
-                            _logger.LogInformation("Tag: {@Tag}", new
-                            {
-                                tfile.Tag.Track,
-                                tfile.Tag.TrackCount,
-                                tfile.Tag.Title,
-                                tfile.Tag.Performers,
-                                tfile.Tag.Disc,
-                                tfile.Tag.DiscCount,
-                                tfile.Tag.Album,
-                                tfile.Tag.AlbumArtists
-                            });
+                            _logger.LogInformation("Canceled.");
                         }
+                        output.Stop();
+                    });
 
-                        Monitor.Wait(lockObject);
+                    output.Init(reader);
+                    output.PlaybackStopped += (s, e) =>
+                    {
+                        lock (lockObject)
+                        {
+                            Monitor.PulseAll(lockObject);
+                        }
+                    };
+                    output.Play();
+
+                    using (var tfile = TagLib.File.Create(file))
+                    {
+                        _logger.LogInformation("Tag: {@Tag}", new
+                        {
+                            tfile.Tag.Track,
+                            tfile.Tag.TrackCount,
+                            tfile.Tag.Title,
+                            tfile.Tag.Performers,
+                            tfile.Tag.Disc,
+                            tfile.Tag.DiscCount,
+                            tfile.Tag.Album,
+                            tfile.Tag.AlbumArtists
+                        });
                     }
+
+                    Monitor.Wait(lockObject);
                 }
-                catch (Exception e)
-                {
-                    _logger.LogError(e, e.Message);
-                }
-                finally
-                {
-                    _logger.LogInformation("End: {@File}", fileInfo);
-                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, e.Message);
+            }
+            finally
+            {
+                _logger.LogInformation("End: {@File}", fileInfo);
             }
         }
     }
