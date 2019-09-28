@@ -17,7 +17,7 @@ namespace AudioPlayer.Console
 
             try
             {
-                await new HostBuilder()
+                await Host.CreateDefaultBuilder(args)
                     .ConfigureServices(services =>
                     {
                         services.AddHostedService<BatchService>();

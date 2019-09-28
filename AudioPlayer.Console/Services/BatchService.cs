@@ -9,7 +9,7 @@ namespace AudioPlayer.Console.Services
 {
     class BatchService : IHostedService
     {
-        private readonly IApplicationLifetime _applicationLifetime;
+        private readonly IHostApplicationLifetime _applicationLifetime;
         private readonly ILogger<BatchService> _logger;
         private readonly IAudioService _audioService;
         private readonly string[] _args;
@@ -17,7 +17,7 @@ namespace AudioPlayer.Console.Services
         private readonly object _lockObject = new object();
         private bool _stopped = true;
 
-        public BatchService(IApplicationLifetime applicationLifetime, ILogger<BatchService> logger,
+        public BatchService(IHostApplicationLifetime applicationLifetime, ILogger<BatchService> logger,
             IAudioService audioService, string[] args)
         {
             _applicationLifetime = applicationLifetime;
