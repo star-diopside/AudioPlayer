@@ -1,13 +1,8 @@
-﻿using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
+﻿namespace AudioPlayer.Services;
 
-namespace AudioPlayer.Services
+public interface IAudioService
 {
-    public interface IAudioService
-    {
-        Task PlayAsync(IEnumerable<string> paths, CancellationToken cancellationToken);
+    Task PlayAsync(IEnumerable<string> paths, CancellationToken cancellationToken);
 
-        void Play(IEnumerable<string> paths);
-    }
+    void Play(IEnumerable<string> paths);
 }

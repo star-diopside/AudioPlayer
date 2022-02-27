@@ -1,117 +1,110 @@
 ﻿using Microsoft.Extensions.Logging;
 using NAudio.Wave;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
-namespace AudioPlayer.Services
+namespace AudioPlayer.Services;
+
+public class AudioService : IAudioService
 {
-    public class AudioService : IAudioService
+    private readonly ILogger<AudioService> _logger;
+
+    public AudioService(ILogger<AudioService> logger)
     {
-        private readonly ILogger<AudioService> _logger;
+        _logger = logger;
+    }
 
-        public AudioService(ILogger<AudioService> logger)
+    public Task PlayAsync(IEnumerable<string> paths, CancellationToken cancellationToken)
+    {
+        return Task.Run(() => PlayInternal(paths, cancellationToken));
+    }
+
+    public void Play(IEnumerable<string> paths)
+    {
+        PlayInternal(paths, CancellationToken.None);
+    }
+
+    private static IEnumerable<string> EnumerateFiles(IEnumerable<string> paths) =>
+        paths.SelectMany(static path => File.Exists(path) ? new[] { path }.AsEnumerable()
+            : Directory.Exists(path) ? from file in Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories)
+                                       orderby Path.GetDirectoryName(Path.GetFullPath(file)), Path.GetFileName(file)
+                                       select file
+            : throw new FileNotFoundException("File Not Found: " + path));
+
+    private void PlayInternal(IEnumerable<string> paths, CancellationToken cancellationToken)
+    {
+        foreach (var file in EnumerateFiles(paths))
         {
-            _logger = logger;
-        }
-
-        public Task PlayAsync(IEnumerable<string> paths, CancellationToken cancellationToken)
-        {
-            return Task.Run(() => PlayInternal(paths, cancellationToken));
-        }
-
-        public void Play(IEnumerable<string> paths)
-        {
-            PlayInternal(paths, CancellationToken.None);
-        }
-
-        private static IEnumerable<string> EnumerateFiles(IEnumerable<string> paths) =>
-            paths.SelectMany(p => File.Exists(p) ? new[] { p }.AsEnumerable()
-                : Directory.Exists(p) ? Directory.EnumerateFiles(p, "*", SearchOption.AllDirectories)
-                                                 .OrderBy(file => Path.GetDirectoryName(Path.GetFullPath(file)))
-                                                 .ThenBy(file => Path.GetFileName(file))
-                : throw new FileNotFoundException("File Not Found: " + p));
-
-        private void PlayInternal(IEnumerable<string> paths, CancellationToken cancellationToken)
-        {
-            foreach (var file in EnumerateFiles(paths))
+            if (cancellationToken.IsCancellationRequested)
             {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    break;
-                }
-
-                PlayInternal(file, cancellationToken);
+                break;
             }
+
+            PlayInternal(file, cancellationToken);
         }
+    }
 
-        private void PlayInternal(string file, CancellationToken cancellationToken)
+    private void PlayInternal(string file, CancellationToken cancellationToken)
+    {
+        var fileInfo = new
         {
-            var fileInfo = new
+            FileName = Path.GetFileName(file),
+            DirectoryName = Path.GetDirectoryName(Path.GetFullPath(file))
+        };
+
+        try
+        {
+            _logger.LogInformation("Start: {@File}", fileInfo);
+
+            using var reader = new AudioFileReader(file);
+            using var output = new WasapiOut();
+
+            var lockObject = new object();
+
+            lock (lockObject)
             {
-                FileName = Path.GetFileName(file),
-                DirectoryName = Path.GetDirectoryName(Path.GetFullPath(file))
-            };
-
-            try
-            {
-                _logger.LogInformation("Start: {@File}", fileInfo);
-
-                using var reader = new AudioFileReader(file);
-                using var output = new WasapiOut();
-
-                var lockObject = new object();
-
-                lock (lockObject)
+                using var registration = cancellationToken.Register(() =>
                 {
-                    using var registration = cancellationToken.Register(() =>
+                    lock (lockObject)
                     {
-                        lock (lockObject)
-                        {
-                            _logger.LogInformation("Canceled.");
-                        }
-                        output.Stop();
-                    });
-
-                    output.Init(reader);
-                    output.PlaybackStopped += (s, e) =>
-                    {
-                        lock (lockObject)
-                        {
-                            Monitor.PulseAll(lockObject);
-                        }
-                    };
-                    output.Play();
-
-                    using (var tfile = TagLib.File.Create(file))
-                    {
-                        _logger.LogInformation("Tag: {@Tag}", new
-                        {
-                            tfile.Tag.Track,
-                            tfile.Tag.TrackCount,
-                            tfile.Tag.Title,
-                            tfile.Tag.Performers,
-                            tfile.Tag.Disc,
-                            tfile.Tag.DiscCount,
-                            tfile.Tag.Album,
-                            tfile.Tag.AlbumArtists
-                        });
+                        _logger.LogInformation("Canceled.");
                     }
+                    output.Stop();
+                });
 
-                    Monitor.Wait(lockObject);
+                output.Init(reader);
+                output.PlaybackStopped += (s, e) =>
+                {
+                    lock (lockObject)
+                    {
+                        Monitor.PulseAll(lockObject);
+                    }
+                };
+                output.Play();
+
+                using (var tfile = TagLib.File.Create(file))
+                {
+                    _logger.LogInformation("Tag: {@Tag}", new
+                    {
+                        tfile.Tag.Track,
+                        tfile.Tag.TrackCount,
+                        tfile.Tag.Title,
+                        tfile.Tag.Performers,
+                        tfile.Tag.Disc,
+                        tfile.Tag.DiscCount,
+                        tfile.Tag.Album,
+                        tfile.Tag.AlbumArtists
+                    });
                 }
+
+                Monitor.Wait(lockObject);
             }
-            catch (Exception e)
-            {
-                _logger.LogError(e, e.Message);
-            }
-            finally
-            {
-                _logger.LogInformation("End: {@File}", fileInfo);
-            }
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, e.Message);
+        }
+        finally
+        {
+            _logger.LogInformation("End: {@File}", fileInfo);
         }
     }
 }
